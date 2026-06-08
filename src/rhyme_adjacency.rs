@@ -1,8 +1,8 @@
 //! Encode rhyme schemes as adjacency matrices.
 //! ABAB vs AABB have different spectral radii.
 
-use serde::{Deserialize, Serialize};
 use crate::linalg::jacobi_eigenvalues;
+use serde::{Deserialize, Serialize};
 
 /// A rhyme scheme encoded as pattern + adjacency matrix.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -26,12 +26,16 @@ impl RhymeScheme {
                 }
             }
         }
-        Self { pattern, adjacency: adj }
+        Self {
+            pattern,
+            adjacency: adj,
+        }
     }
 
     /// Parse from a string like "ABAB" or "AABB" or "ABBA".
     pub fn from_str(s: &str) -> Self {
-        let pattern: Vec<usize> = s.chars()
+        let pattern: Vec<usize> = s
+            .chars()
             .filter(|c| c.is_ascii_alphabetic())
             .map(|c| (c as u8 - b'A') as usize)
             .collect();
@@ -101,7 +105,9 @@ impl RhymeScheme {
 
     /// Classify the rhyme scheme type.
     pub fn classify(&self) -> RhymeType {
-        let s: String = self.pattern.iter()
+        let s: String = self
+            .pattern
+            .iter()
             .map(|&c| (b'A' + c as u8) as char)
             .collect();
         if self.rhyme_pair_count() == 0 {
@@ -135,10 +141,10 @@ impl RhymeScheme {
 /// Rhyme scheme classification.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum RhymeType {
-    Alternating,  // ABAB
-    Coupled,      // AABB
-    Enclosed,     // ABBA
-    FreeVerse,    // No rhymes
+    Alternating, // ABAB
+    Coupled,     // AABB
+    Enclosed,    // ABBA
+    FreeVerse,   // No rhymes
     Other(String),
 }
 
@@ -205,7 +211,11 @@ mod tests {
         let free_r = radii[3];
 
         // Rhyming schemes have positive spectral radius; free verse has 0
-        assert!(free_r < 0.01, "Free verse should have near-zero spectral radius, got {}", free_r);
+        assert!(
+            free_r < 0.01,
+            "Free verse should have near-zero spectral radius, got {}",
+            free_r
+        );
         assert!(abab_r > 0.5, "ABAB should have meaningful spectral radius");
         assert!(aabb_r > 0.5, "AABB should have meaningful spectral radius");
     }
@@ -224,7 +234,10 @@ mod tests {
         // And free verse is spectrally distinct from both
         let free = RhymeScheme::from_str("ABCD");
         let dist_abab_free = abab.spectral_distance(&free);
-        assert!(dist_abab_free > 0.01, "Rhyming vs free verse should differ spectrally");
+        assert!(
+            dist_abab_free > 0.01,
+            "Rhyming vs free verse should differ spectrally"
+        );
     }
 
     #[test]

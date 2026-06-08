@@ -1,9 +1,9 @@
 //! Compute graph Laplacian eigenvalues for poetic traditions.
 //! Each tradition becomes a point in spectral space.
 
-use serde::{Deserialize, Serialize};
-use crate::metrical_graph::{MetricalGraph, MetricalLine};
 use crate::linalg::jacobi_eigenvalues;
+use crate::metrical_graph::{MetricalGraph, MetricalLine};
+use serde::{Deserialize, Serialize};
 
 /// Spectral signature of a poetic tradition.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -38,7 +38,10 @@ impl SpectralSignature {
 
     /// Spectral radius = largest eigenvalue magnitude.
     pub fn spectral_radius(&self) -> f64 {
-        self.eigenvalues.iter().map(|e| e.abs()).fold(0.0_f64, f64::max)
+        self.eigenvalues
+            .iter()
+            .map(|e| e.abs())
+            .fold(0.0_f64, f64::max)
     }
 
     /// Spectral gap = difference between two largest eigenvalues.
@@ -89,7 +92,11 @@ impl SpectralSignature {
 
     /// Normalize eigenvalues by the largest to enable cross-tradition comparison.
     pub fn normalized(&self) -> SpectralSignature {
-        let max_eig = self.eigenvalues.iter().map(|e| e.abs()).fold(0.0_f64, f64::max);
+        let max_eig = self
+            .eigenvalues
+            .iter()
+            .map(|e| e.abs())
+            .fold(0.0_f64, f64::max);
         let factor = if max_eig > 1e-12 { 1.0 / max_eig } else { 1.0 };
         SpectralSignature {
             eigenvalues: self.eigenvalues.iter().map(|e| e * factor).collect(),
@@ -99,8 +106,12 @@ impl SpectralSignature {
 }
 
 /// Classify a poem into a tradition by finding the closest spectral match.
-pub fn classify_tradition(query: &SpectralSignature, traditions: &[SpectralSignature]) -> Option<String> {
-    traditions.iter()
+pub fn classify_tradition(
+    query: &SpectralSignature,
+    traditions: &[SpectralSignature],
+) -> Option<String> {
+    traditions
+        .iter()
         .min_by(|a, b| {
             a.distance_to(query)
                 .partial_cmp(&b.distance_to(query))
@@ -141,34 +152,48 @@ mod tests {
     use crate::metrical_graph::MetricalLine;
 
     fn english_iambic_lines() -> Vec<MetricalLine> {
-        (0..5).map(|i| {
-            MetricalLine::new(
-                vec![1.0; 10],
-                vec![false, true, false, true, false, true, false, true, false, true],
-                format!("English-{}", i),
-            )
-        }).collect()
+        (0..5)
+            .map(|i| {
+                MetricalLine::new(
+                    vec![1.0; 10],
+                    vec![
+                        false, true, false, true, false, true, false, true, false, true,
+                    ],
+                    format!("English-{}", i),
+                )
+            })
+            .collect()
     }
 
     fn french_alexandrine_lines() -> Vec<MetricalLine> {
-        (0..5).map(|i| {
-            // French alexandrine: 12 syllables, hemistich at 6
-            MetricalLine::new(
-                vec![1.0; 12],
-                vec![false, false, false, true, false, false, false, false, false, true, false, false],
-                format!("French-{}", i),
-            )
-        }).collect()
+        (0..5)
+            .map(|i| {
+                // French alexandrine: 12 syllables, hemistich at 6
+                MetricalLine::new(
+                    vec![1.0; 12],
+                    vec![
+                        false, false, false, true, false, false, false, false, false, true, false,
+                        false,
+                    ],
+                    format!("French-{}", i),
+                )
+            })
+            .collect()
     }
 
     fn sanskrit_sloka_lines() -> Vec<MetricalLine> {
-        (0..5).map(|i| {
-            MetricalLine::new(
-                vec![1.0; 16],
-                vec![false, true, false, true, false, true, false, false, false, true, false, true, false, true, false, false],
-                format!("Sanskrit-{}", i),
-            )
-        }).collect()
+        (0..5)
+            .map(|i| {
+                MetricalLine::new(
+                    vec![1.0; 16],
+                    vec![
+                        false, true, false, true, false, true, false, false, false, true, false,
+                        true, false, true, false, false,
+                    ],
+                    format!("Sanskrit-{}", i),
+                )
+            })
+            .collect()
     }
 
     #[test]
@@ -183,7 +208,10 @@ mod tests {
     fn test_fiedler_value_positive() {
         let sig = SpectralSignature::from_lines(&english_iambic_lines(), "English");
         // Connected graph => Fiedler value > 0
-        assert!(sig.fiedler_value() > 0.0, "Fiedler value should be positive for connected graph");
+        assert!(
+            sig.fiedler_value() > 0.0,
+            "Fiedler value should be positive for connected graph"
+        );
     }
 
     #[test]
@@ -197,7 +225,10 @@ mod tests {
         let sig1 = SpectralSignature::from_lines(&english_iambic_lines(), "English1");
         let sig2 = SpectralSignature::from_lines(&english_iambic_lines(), "English2");
         // Same lines => identical signature
-        assert!(sig1.distance_to(&sig2) < 0.1, "Same tradition should be spectrally close");
+        assert!(
+            sig1.distance_to(&sig2) < 0.1,
+            "Same tradition should be spectrally close"
+        );
     }
 
     #[test]
@@ -217,7 +248,11 @@ mod tests {
         let sig1 = SpectralSignature::from_lines(&english_iambic_lines(), "E1");
         let sig2 = SpectralSignature::from_lines(&english_iambic_lines(), "E2");
         let sim = sig1.cosine_similarity(&sig2);
-        assert!(sim > 0.99, "Identical traditions should have cosine sim ~1, got {}", sim);
+        assert!(
+            sim > 0.99,
+            "Identical traditions should have cosine sim ~1, got {}",
+            sim
+        );
     }
 
     #[test]
@@ -243,8 +278,16 @@ mod tests {
     fn test_normalized_signature() {
         let sig = SpectralSignature::from_lines(&english_iambic_lines(), "English");
         let normed = sig.normalized();
-        let max_abs = normed.eigenvalues.iter().map(|e| e.abs()).fold(0.0_f64, f64::max);
-        assert!((max_abs - 1.0).abs() < 0.01, "Normalized max eigenvalue should be ~1, got {}", max_abs);
+        let max_abs = normed
+            .eigenvalues
+            .iter()
+            .map(|e| e.abs())
+            .fold(0.0_f64, f64::max);
+        assert!(
+            (max_abs - 1.0).abs() < 0.01,
+            "Normalized max eigenvalue should be ~1, got {}",
+            max_abs
+        );
     }
 
     #[test]

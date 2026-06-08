@@ -6,6 +6,12 @@ version = "0.1.0"
 edition = "2024"
 description = "Spectral graph theory applied to metrical patterns across languages"
 license = "MIT"
+repository = "https://github.com/SuperInstance/spectral-prosody"
+documentation = "https://docs.rs/spectral-prosody"
+readme = "README.md"
+keywords = ["spectral", "prosody", "poetry", "graph-laplacian", "linguistics"]
+categories = ["mathematics", "science", "text-processing"]
+rust-version = "1.85"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

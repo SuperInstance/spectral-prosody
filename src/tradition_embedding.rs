@@ -1,9 +1,9 @@
 //! Low-dimensional spectral embeddings of poetic traditions.
 //! Visualize the "space of all poetry".
 
-use serde::{Deserialize, Serialize};
 use crate::laplacian_scan::SpectralSignature;
 use crate::linalg;
+use serde::{Deserialize, Serialize};
 
 /// A tradition embedded in low-dimensional space.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -52,15 +52,21 @@ impl TraditionEmbedding {
 
 /// Embed traditions in low-dimensional space using spectral signatures.
 /// Uses a simple PCA-like approach: take the top-k eigenvalues as coordinates.
-pub fn embed_traditions(signatures: &[SpectralSignature], dimensions: usize) -> Vec<TraditionEmbedding> {
-    signatures.iter().map(|sig| {
-        let normed = sig.normalized();
-        // Use first `dimensions` eigenvalues as coordinates
-        let coords: Vec<f64> = (0..dimensions)
-            .map(|i| normed.eigenvalues.get(i).copied().unwrap_or(0.0))
-            .collect();
-        TraditionEmbedding::new(coords, sig.tradition.clone())
-    }).collect()
+pub fn embed_traditions(
+    signatures: &[SpectralSignature],
+    dimensions: usize,
+) -> Vec<TraditionEmbedding> {
+    signatures
+        .iter()
+        .map(|sig| {
+            let normed = sig.normalized();
+            // Use first `dimensions` eigenvalues as coordinates
+            let coords: Vec<f64> = (0..dimensions)
+                .map(|i| normed.eigenvalues.get(i).copied().unwrap_or(0.0))
+                .collect();
+            TraditionEmbedding::new(coords, sig.tradition.clone())
+        })
+        .collect()
 }
 
 /// Build a distance matrix between all tradition embeddings.
@@ -78,8 +84,14 @@ pub fn distance_matrix(embeddings: &[TraditionEmbedding]) -> Vec<Vec<f64>> {
 }
 
 /// Find the k nearest neighbors of a tradition.
-pub fn nearest_neighbors(embeddings: &[TraditionEmbedding], query_idx: usize, k: usize) -> Vec<(usize, f64)> {
-    let mut distances: Vec<(usize, f64)> = embeddings.iter().enumerate()
+pub fn nearest_neighbors(
+    embeddings: &[TraditionEmbedding],
+    query_idx: usize,
+    k: usize,
+) -> Vec<(usize, f64)> {
+    let mut distances: Vec<(usize, f64)> = embeddings
+        .iter()
+        .enumerate()
         .filter(|(i, _)| *i != query_idx)
         .map(|(i, e)| (i, embeddings[query_idx].distance_to(e)))
         .collect();
@@ -127,9 +139,16 @@ pub fn mds_step(distances: &[Vec<f64>], _current: &[Vec<f64>], target_dim: usize
     // Simple: use the centered distance matrix columns as coordinates
     let mut coords = vec![vec![0.0; target_dim]; n];
     for d in 0..target_dim {
-        let scale = if d < top_eigs.len() && top_eigs[d] > 0.0 { top_eigs[d].sqrt() } else { 0.0 };
+        let scale = if d < top_eigs.len() && top_eigs[d] > 0.0 {
+            top_eigs[d].sqrt()
+        } else {
+            0.0
+        };
         for i in 0..n {
-            coords[i][d] = scale * (b[i].get(d).copied().unwrap_or(0.0) / n as f64).max(-1.0).min(1.0);
+            coords[i][d] = scale
+                * (b[i].get(d).copied().unwrap_or(0.0) / n as f64)
+                    .max(-1.0)
+                    .min(1.0);
         }
     }
     coords
@@ -141,14 +160,20 @@ mod tests {
     use crate::laplacian_scan::SpectralSignature;
     use crate::metrical_graph::MetricalLine;
 
-    fn make_tradition(name: &str, syllable_count: usize, stress_pattern: Vec<bool>) -> SpectralSignature {
-        let lines: Vec<MetricalLine> = (0..5).map(|i| {
-            MetricalLine::new(
-                vec![1.0; syllable_count],
-                stress_pattern.clone(),
-                format!("{}-{}", name, i),
-            )
-        }).collect();
+    fn make_tradition(
+        name: &str,
+        syllable_count: usize,
+        stress_pattern: Vec<bool>,
+    ) -> SpectralSignature {
+        let lines: Vec<MetricalLine> = (0..5)
+            .map(|i| {
+                MetricalLine::new(
+                    vec![1.0; syllable_count],
+                    stress_pattern.clone(),
+                    format!("{}-{}", name, i),
+                )
+            })
+            .collect();
         SpectralSignature::from_lines(&lines, name)
     }
 
@@ -169,8 +194,20 @@ mod tests {
 
     #[test]
     fn test_embed_traditions() {
-        let sig1 = make_tradition("English", 10, vec![false, true, false, true, false, true, false, true, false, true]);
-        let sig2 = make_tradition("French", 12, vec![false, false, false, true, false, false, false, false, false, true, false, false]);
+        let sig1 = make_tradition(
+            "English",
+            10,
+            vec![
+                false, true, false, true, false, true, false, true, false, true,
+            ],
+        );
+        let sig2 = make_tradition(
+            "French",
+            12,
+            vec![
+                false, false, false, true, false, false, false, false, false, true, false, false,
+            ],
+        );
         let embeddings = embed_traditions(&[sig1, sig2], 3);
         assert_eq!(embeddings.len(), 2);
         assert_eq!(embeddings[0].coordinates.len(), 3);
@@ -206,21 +243,46 @@ mod tests {
     #[test]
     fn test_related_traditions_close_in_embedding() {
         // Two iambic traditions should be closer than iambic vs free
-        let en = make_tradition("English", 10, vec![false, true, false, true, false, true, false, true, false, true]);
+        let en = make_tradition(
+            "English",
+            10,
+            vec![
+                false, true, false, true, false, true, false, true, false, true,
+            ],
+        );
         // "Spanish" also iambic-ish
-        let es = make_tradition("Spanish", 10, vec![false, true, false, true, false, true, false, true, false, true]);
+        let es = make_tradition(
+            "Spanish",
+            10,
+            vec![
+                false, true, false, true, false, true, false, true, false, true,
+            ],
+        );
         // Free verse
-        let free = make_tradition("FreeVerse", 7, vec![true, false, false, true, false, true, false]);
+        let free = make_tradition(
+            "FreeVerse",
+            7,
+            vec![true, false, false, true, false, true, false],
+        );
 
         let embeddings = embed_traditions(&[en, es, free], 5);
         let d_en_es = embeddings[0].distance_to(&embeddings[1]);
         let d_en_free = embeddings[0].distance_to(&embeddings[2]);
-        assert!(d_en_es <= d_en_free, "Related traditions should be closer: en-es={} vs en-free={}", d_en_es, d_en_free);
+        assert!(
+            d_en_es <= d_en_free,
+            "Related traditions should be closer: en-es={} vs en-free={}",
+            d_en_es,
+            d_en_free
+        );
     }
 
     #[test]
     fn test_mds_step() {
-        let dist = vec![vec![0.0, 1.0, 2.0], vec![1.0, 0.0, 1.0], vec![2.0, 1.0, 0.0]];
+        let dist = vec![
+            vec![0.0, 1.0, 2.0],
+            vec![1.0, 0.0, 1.0],
+            vec![2.0, 1.0, 0.0],
+        ];
         let current = vec![vec![0.0, 0.0], vec![1.0, 0.0], vec![2.0, 0.0]];
         let result = mds_step(&dist, &current, 2);
         assert_eq!(result.len(), 3);

@@ -1,8 +1,8 @@
 //! Construct weighted graphs from poetic corpora.
 //! Nodes = lines, edges = metrical/stress similarity, weights = syllable distance.
 
-use serde::{Deserialize, Serialize};
 use crate::linalg;
+use serde::{Deserialize, Serialize};
 
 /// A single line of poetry with metrical information.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -18,7 +18,11 @@ pub struct MetricalLine {
 impl MetricalLine {
     /// Create a new metrical line.
     pub fn new(syllables: Vec<f64>, stresses: Vec<bool>, language: String) -> Self {
-        Self { syllables, stresses, language }
+        Self {
+            syllables,
+            stresses,
+            language,
+        }
     }
 
     /// The number of syllables.
@@ -96,7 +100,8 @@ impl MetricalGraph {
     pub fn from_lines(lines: &[MetricalLine]) -> Self {
         let n = lines.len();
         let mut adj = vec![vec![0.0; n]; n];
-        let labels: Vec<String> = lines.iter()
+        let labels: Vec<String> = lines
+            .iter()
             .enumerate()
             .map(|(i, l)| format!("{}:{}", l.language, i))
             .collect();
@@ -108,7 +113,10 @@ impl MetricalGraph {
                 adj[j][i] = w;
             }
         }
-        Self { adjacency: adj, labels }
+        Self {
+            adjacency: adj,
+            labels,
+        }
     }
 
     /// Number of nodes.
@@ -145,7 +153,9 @@ impl MetricalGraph {
     /// Compute the normalized Laplacian: L_norm = D^{-1/2} L D^{-1/2}.
     pub fn normalized_laplacian(&self) -> Vec<Vec<f64>> {
         let n = self.node_count();
-        let deg: Vec<f64> = (0..n).map(|i| self.adjacency[i].iter().sum::<f64>().max(1e-12)).collect();
+        let deg: Vec<f64> = (0..n)
+            .map(|i| self.adjacency[i].iter().sum::<f64>().max(1e-12))
+            .collect();
         let mut l = vec![vec![0.0; n]; n];
         for i in 0..n {
             for j in 0..n {
@@ -186,7 +196,8 @@ impl MetricalGraph {
         let eigs = crate::linalg::jacobi_eigenvalues(&lap, 500);
         // For random walk on graph, mean first passage time relates to eigenvalues
         // Kemeny's constant ≈ sum of 1/λᵢ for non-zero eigenvalues
-        let kemeny: f64 = eigs.iter()
+        let kemeny: f64 = eigs
+            .iter()
             .filter(|&&e| e.abs() > 1e-10)
             .map(|&e| 1.0 / e)
             .sum();
@@ -223,7 +234,9 @@ mod tests {
     fn iambic_pentameter() -> MetricalLine {
         MetricalLine::new(
             vec![1.0; 10],
-            vec![false, true, false, true, false, true, false, true, false, true],
+            vec![
+                false, true, false, true, false, true, false, true, false, true,
+            ],
             "English".into(),
         )
     }
@@ -239,7 +252,9 @@ mod tests {
     fn blank_verse_line() -> MetricalLine {
         MetricalLine::new(
             vec![1.0; 10],
-            vec![false, true, false, true, false, true, false, true, false, true],
+            vec![
+                false, true, false, true, false, true, false, true, false, true,
+            ],
             "English".into(),
         )
     }
@@ -249,8 +264,8 @@ mod tests {
         MetricalLine::new(
             vec![1.0; 16],
             vec![
-                false, true, false, true, false, true, false, false,
-                false, true, false, true, false, true, false, false,
+                false, true, false, true, false, true, false, false, false, true, false, true,
+                false, true, false, false,
             ],
             "Sanskrit".into(),
         )
@@ -334,7 +349,11 @@ mod tests {
         let lap = graph.laplacian();
         for row in &lap {
             let sum: f64 = row.iter().sum();
-            assert!(sum.abs() < 1e-9, "Laplacian row should sum to 0, got {}", sum);
+            assert!(
+                sum.abs() < 1e-9,
+                "Laplacian row should sum to 0, got {}",
+                sum
+            );
         }
     }
 

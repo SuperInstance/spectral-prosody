@@ -165,7 +165,11 @@ pub fn trace(a: &[Vec<f64>]) -> f64 {
 
 /// Compute the Frobenius norm of a matrix.
 pub fn frobenius_norm(a: &[Vec<f64>]) -> f64 {
-    a.iter().flat_map(|row| row.iter()).map(|x| x * x).sum::<f64>().sqrt()
+    a.iter()
+        .flat_map(|row| row.iter())
+        .map(|x| x * x)
+        .sum::<f64>()
+        .sqrt()
 }
 
 #[cfg(test)]
@@ -221,7 +225,11 @@ mod tests {
 
     #[test]
     fn test_jacobi_3x3() {
-        let a = vec![vec![2.0, -1.0, 0.0], vec![-1.0, 2.0, -1.0], vec![0.0, -1.0, 2.0]];
+        let a = vec![
+            vec![2.0, -1.0, 0.0],
+            vec![-1.0, 2.0, -1.0],
+            vec![0.0, -1.0, 2.0],
+        ];
         let eigs = jacobi_eigenvalues(&a, 200);
         // Path graph P3 eigenvalues: 2-√2, 2, 2+√2
         let sqrt2 = 2.0_f64.sqrt();

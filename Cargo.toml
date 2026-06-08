@@ -1,0 +1,11 @@
+[package]
+name = "spectral-prosody"
+version = "0.1.0"
+edition = "2021"
+description = "Spectral graph methods for rhythmic prosody analysis — eigenvalue rhythm decomposition"
+license = "MIT"
+repository = "https://github.com/SuperInstance/spectral-prosody"
+keywords = ["prosody", "rhythm", "spectral", "music", "graph"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }

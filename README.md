@@ -1,112 +1,108 @@
 # spectral-prosody
 
-[![crates.io](https://img.shields.io/crates/v/spectral-prosody.svg)](https://crates.io/crates/spectral-prosody)
-[![docs.rs](https://docs.rs/spectral-prosody/badge.svg)](https://docs.rs/spectral-prosody)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+**Spectral graph theory applied to metrical patterns across languages.**
 
-## The Problem
+Poetry traditions have spectral fingerprints — the eigenvalues of graph Laplacians constructed from metrical structure reveal deep structural properties. Independent cultures converge on isospectral meters, suggesting universal constraints from breath and cognition.
 
-Speech and music have rhythm at multiple scales simultaneously: macro rhythm (phrase structure), meso rhythm (beat patterns), and micro rhythm (individual note/syllable timing). These layers interact — a sentence's phrase structure constrains where accents fall, which constrains syllable timing.
+## Modules
 
-Most prosody analyzers use time-domain methods (autocorrelation, onset detection). These find one dominant period and miss the layered structure. Spectral graph methods capture all layers at once.
-
-## The Idea
-
-Build a graph where nodes are acoustic events (beats, syllables, notes) and edges connect temporally proximate events with weights based on feature similarity (pitch, energy, spectral centroid). The **graph Laplacian's eigenvalues** then decompose the rhythm into layers:
-
-- **Low eigenvalues** = slow-varying component (macro rhythm, phrase structure)
-- **Mid eigenvalues** = the primary beat pattern
-- **High eigenvalues** = fast-varying micro-timing (swing, groove)
-
-The **Fiedler vector** (eigenvector for λ₂) naturally segments the prosody into phrases — sign changes in the Fiedler vector correspond to phrase boundaries.
-
-## How It Works
-
-### Build the prosody graph
-
-```rust
-use spectral_prosody::{ProsodyNode, ProsodyGraph};
-
-let nodes = vec![
-    ProsodyNode { time: 0.0, energy: 0.8, pitch: 220.0, duration: 0.15, spectral_centroid: 1500.0 },
-    ProsodyNode { time: 0.3, energy: 0.6, pitch: 330.0, duration: 0.12, spectral_centroid: 1800.0 },
-    // ... more nodes
-];
-
-// k-NN graph with Gaussian kernel weighting
-let graph = ProsodyGraph::from_nodes(&nodes, /* k */ 5);
-```
-
-### Extract rhythmic layers
-
-```rust
-use spectral_prosody::RhythmExtractor;
-
-let extractor = RhythmExtractor::new(&graph);
-let layers = extractor.extract(/* max_layers */ 5);
-
-for (i, layer) in layers.iter().enumerate() {
-    println!("Layer {}: period={:.2}s strength={:.3}",
-        i, layer.period, layer.strength);
-}
-// Layer 0: period=4.0s strength=0.92  (phrase level)
-// Layer 1: period=0.5s strength=0.87  (beat level)
-// Layer 2: period=0.25s strength=0.31 (sub-beat)
-```
-
-### Segment into phrases
-
-```rust
-use spectral_prosody::PhraseSegmenter;
-
-let segmenter = PhraseSegmenter::new(&graph);
-let phrases = segmenter.segment(&layers[0]);
-
-for phrase in &phrases {
-    println!("Phrase [{}..{}]: avg_energy={:.2}",
-        phrase.start_idx, phrase.end_idx, phrase.average_energy);
-}
-```
-
-### Extract features from raw data
-
-```rust
-use spectral_prosody::ProsodyFeature;
-
-let pitch = ProsodyFeature::from_pitch(&audio_samples, /* sample_rate */ 44100);
-let energy = ProsodyFeature::from_energy(&audio_samples, /* window_ms */ 25);
-let centroid = ProsodyFeature::from_spectral_centroid(&audio_samples, 44100);
-```
-
-### Export to MIDI
-
-```rust
-use spectral_prosody::midi::MidiExporter;
-
-let midi = MidiExporter::from_layers(&layers, /* bpm */ 120);
-let bytes = midi.to_bytes(); // Standard MIDI file
-```
-
-## Module Map
-
-| Module | What it does |
+| Module | Description |
 |---|---|
-| `prosody` | `ProsodyGraph` — build k-NN or fully-connected graph from prosody nodes |
-| `rhythm` | `RhythmExtractor` — eigen-decompose Laplacian → rhythmic layers |
-| `phrase` | `PhraseSegmenter` — Fiedler vector → phrase boundaries |
-| `feature` | `ProsodyFeature` — extract timing, energy, pitch, spectral centroid |
-| `midi` | `MidiExporter` — rhythmic layers → MIDI patterns |
-| `error` | `ProsodyError` |
+| `metrical_graph` | Construct weighted graphs from poetic corpora. Nodes = lines, edges = metrical similarity, weights = syllable distance. |
+| `laplacian_scan` | Compute graph Laplacian eigenvalues for poetic traditions. Each tradition = point in spectral space. |
+| `rhyme_adjacency` | Encode rhyme schemes as adjacency matrices. ABAB, AABB, ABBA, and free verse produce distinct spectral radii. |
+| `tradition_embedding` | Low-dimensional spectral embeddings of poetic traditions. Visualize the "space of all poetry". |
+| `iso_breath` | Test the conjecture that breath-constrained meters produce isospectral graphs regardless of language. |
+| `dial_scan` | Connect to dial-theory: spectral distance between traditions as a dial dimension. |
+| `linalg` | Gaussian elimination and Jacobi eigenvalue method from scratch. No external math dependencies. |
 
-## Why Graphs, Not FFT?
+## Core Types
 
-FFT decomposes a signal into sinusoidal frequencies. But rhythm isn't sinusoidal — it's event-based. A graph naturally represents the *relationship* between events, and the graph Laplacian's spectrum captures periodicity in the **structure**, not the waveform. A rhythm that's perfectly regular but has varying amplitudes is one clean eigenvalue in graph space but a messy harmonic series in FFT space.
+```rust
+use spectral_prosody::*;
 
-## Links
+// A line of poetry with metrical information
+let line = MetricalLine::new(
+    vec![1.0; 10],                                        // syllable durations
+    vec![false, true, false, true, false, true, false, true, false, true], // iambic stress
+    "English".into(),
+);
 
-- [Documentation](https://docs.rs/spectral-prosody)
-- [Repository](https://github.com/SuperInstance/spectral-prosody)
-- [crates.io](https://crates.io/crates/spectral-prosody)
+// Build a graph from multiple lines
+let graph = MetricalGraph::from_lines(&lines);
+
+// Extract spectral signature
+let signature = SpectralSignature::from_graph(&graph, "English Iambic Pentameter");
+println!("Fiedler value: {}", signature.fiedler_value());
+println!("Spectral radius: {}", signature.spectral_radius());
+
+// Classify rhyme schemes
+let abab = RhymeScheme::from_str("ABAB");
+println!("Spectral radius: {}", abab.spectral_radius());
+
+// Compare traditions spectrally
+let distance = sig_en.distance_to(&sig_fr);
+let similarity = sig_en.cosine_similarity(&sig_fr);
+```
+
+## Mathematical Foundation
+
+### Graph Construction
+Lines of poetry become nodes. Edge weights encode metrical similarity:
+
+```
+w(i,j) = 0.6 × stress_similarity(i,j) + 0.4 × syllable_distance(i,j)
+```
+
+### Laplacian Eigenvalues
+The unnormalized graph Laplacian `L = D - A` encodes metrical structure in its spectrum:
+- **λ₁ = 0** (always, for connected components)
+- **λ₂ (Fiedler value)** = algebraic connectivity, measures metrical coherence
+- **λ_max** = spectral radius, relates to rhythmic complexity
+
+### Jacobi Eigenvalue Method
+Eigenvalues are computed via the Jacobi iterative method — rotations annihilate off-diagonal entries of the symmetric Laplacian matrix. Converges for all real symmetric matrices.
+
+### Cheeger Constant
+The Cheeger constant `h(G)` measures the "bottleneck" of the metrical graph:
+
+```
+h²/2 ≤ λ₂ ≤ 2h
+```
+
+Approximated as `h ≈ √(2λ₂)`.
+
+### Iso-Breath Conjecture
+Meters constrained by human breath capacity (~1 breath unit ≈ 10-16 syllables) produce isospectral graph structures regardless of language family. Iambic pentameter (English, 10 syllables), Sanskrit sloka (16 syllables), and French alexandrine (12 syllables) all inhabit a narrow region of spectral space.
+
+### Dial Theory
+Each eigenvalue index becomes a "dial dimension" along which traditions vary. The full dial-space distance between traditions captures structural divergence beyond simple syllable counting.
+
+## Testing
+
+```bash
+cargo test
+```
+
+65 tests covering:
+- Metrical graph construction and Laplacian properties
+- Jacobi eigenvalue computation (identity, 2×2, 3×3 path graph)
+- Gaussian elimination (identity, general, singular)
+- Rhyme scheme spectral classification (ABAB, AABB, ABBA, free verse)
+- Spectral clustering and tradition classification
+- Cheeger constant computation
+- Random walk traversal time (Kemeny's constant)
+- Tradition embedding and dimensionality reduction
+- Iso-breath conjecture validation
+- Dial-space construction and proximity ranking
+- Serde roundtrips for all public types
+
+## Dependencies
+
+- `serde` — serialization for all public types
+- `serde_json` — test-only JSON roundtrips
+
+No external math libraries. All linear algebra implemented from scratch.
 
 ## License
 
